@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeatWatch AI - Urban Heat Intelligence Platform</title>
+    <meta name="description" content="AI-powered urban heat mitigation platform trained on real satellite data from 21 Indian cities.">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="frontend/styles.css?v=4.0">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-layout">
+
+        <!-- ─── Left Sidebar Dashboard ─── -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon"><i data-lucide="thermometer" class="ico"></i></div>
+                <div>
+                    <h1 class="brand-title">HeatWatch AI</h1>
+                    <p class="brand-sub">Urban Heat Intelligence</p>
+                </div>
+            </div>
+
+            <!-- GEE Satellite Status Indicator -->
+            <div id="geeStatusBar" class="gee-status-bar">
+                <div class="gee-status-dot" id="geeStatusDot"></div>
+                <span id="geeStatusText">Checking GEE…</span>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="label-sm">SELECT CITY</label>
+                <select id="citySelect" class="select-city">
+                    <option value="">Loading…</option>
+                </select>
+            </div>
+
+            <div class="sidebar-section">
+                <label class="label-sm">MODEL ARCHITECTURE (STAGE A)</label>
+                <select id="modelOptionSelect" class="select-city">
+                    <option value="ensemble" selected>✨ Multi-Model Ensemble (94.3% R²)</option>
+                    <option value="openmeteo_realtime">⚡ Live Open-Meteo Weather UHI (Real-Time Data)</option>
+                    <option value="option1_tabular">Option 1: Tabular / Gradient-Boosted</option>
+                    <option value="option2_cnn">Option 2: Deep Learning Neural Net / CNN</option>
+                </select>
+            </div>
+
+            <!-- Open-Meteo Live Weather Card (shown when Open-Meteo option active) -->
+            <div id="openmeteoCard" class="openmeteo-card hidden">
+                <div class="om-card-header">
+                    <div class="om-live-tag"><span class="om-live-dot"></span> LIVE OPEN-METEO</div>
+                    <span id="omTimestamp" class="om-time-text">Syncing…</span>
+                </div>
+                <div class="om-stat-grid">
+                    <div class="om-stat-box">
+                        <span class="om-stat-title">Urban Temp</span>
+                        <span id="txtOmUrbanTemp" class="om-stat-val urban">—</span>
+                    </div>
+                    <div class="om-stat-box">
+                        <span class="om-stat-title">Rural Temp</span>
+                        <span id="txtOmRuralTemp" class="om-stat-val rural">—</span>
+                    </div>
+                    <div class="om-stat-box">
+                        <span class="om-stat-title">Actual UHI</span>
+                        <span id="txtOmActualUHI" class="om-stat-val uhi">—</span>
+                    </div>
+                    <div class="om-stat-box">
+                        <span class="om-stat-title">Predicted UHI</span>
+                        <span id="txtOmPredUHI" class="om-stat-val pred">—</span>
+                    </div>
+                </div>
+                <div class="om-sub-info">
+                    <span>💨 Wind: <strong id="txtOmWind">—</strong></span>
+                    <span>💧 Humidity: <strong id="txtOmHumidity">—</strong></span>
+                </div>
+                <div class="om-actions">
+                    <button id="btnFetchOpenMeteo" class="btn-om-action" onclick="triggerOpenMeteoFetch()">
+                        <i data-lucide="refresh-cw" class="btn-ico"></i> Sync Live Weather
+                    </button>
+                    <button id="btnTrainOpenMeteo" class="btn-om-action secondary" onclick="triggerOpenMeteoRetrain()">
+                        <i data-lucide="cpu" class="btn-ico"></i> Retrain Model
+                    </button>
+                </div>
+            </div>
+
+            <!-- City Stats Panel (populated from real data) -->
+            <div class="city-stats-panel" id="cityStatsPanel">
+                <div class="stat-row">
+                    <span class="stat-label">Avg Surface Temp</span>
+                    <span class="stat-value" id="statAvgLST">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Max Surface Temp</span>
+                    <span class="stat-value" id="statMaxLST">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Vegetation Index</span>
+                    <span class="stat-value" id="statNDVI">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Built-up Index</span>
+                    <span class="stat-value" id="statNDBI">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Tree Canopy</span>
+                    <span class="stat-value" id="statTreeCover">—</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Grid Cells</span>
+                    <span class="stat-value" id="statCells">—</span>
+                </div>
+            </div>
+
+            <!-- Active Model Performance Readout Card -->
+            <div class="model-readout-card" id="modelReadoutCard" style="background:#18181b; border:1px solid #27272a; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                <div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:#a1a1aa; margin-bottom:4px;">ACTIVE MODEL ENGINE</div>
+                <div id="txtActiveModelName" style="font-size:0.85rem; font-weight:700; color:#38bdf8;">✨ Multi-Model Ensemble</div>
+                <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:0.75rem; color:#d4d4d8;">
+                    <span>Active Output:</span>
+                    <strong id="txtActiveModelPred" style="color:#ef4444;">—</strong>
+                </div>
+            </div>
+
+
+            <!-- Tab Navigation -->
+            <nav class="tab-nav">
+                <button class="tab-btn active" data-tab="heatmap" onclick="switchTab('heatmap')">
+                    <i data-lucide="map" class="tab-ico"></i> Heat Map
+                </button>
+                <button class="tab-btn" data-tab="charts" onclick="switchTab('charts')">
+                    <i data-lucide="bar-chart-3" class="tab-ico"></i> Heat Charts
+                </button>
+                <button class="tab-btn" data-tab="scenarios" onclick="switchTab('scenarios')">
+                    <i data-lucide="flask-conical" class="tab-ico"></i> Scenarios
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="info-btn" onclick="toggleInfoModal()">
+                    <i data-lucide="info" class="info-ico"></i>
+                    <span>About this Model</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ─── Main Content Area ─── -->
+        <main class="main-content">
+
+            <!-- Section 1: Heat Map -->
+            <section class="tab-panel active" id="panel-heatmap">
+                <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <h2>Real-Time Satellite Heat Map</h2>
+                        <p>Live satellite & weather data across 57+ cities in India, color-coded by surface temperature.</p>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button id="btnViewIndiaMap" class="btn-map-view active" onclick="switchMapView('india')">
+                            🇮🇳 All-India Live Map
+                        </button>
+                        <button id="btnViewCityGrid" class="btn-map-view" onclick="switchMapView('city')">
+                            📍 City Microclimate Grid
+                        </button>
+                        <button id="btnViewForecast" class="btn-map-view" onclick="switchMapView('forecast')">
+                            🔮 Forecast View
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Data Source Badge + Forecast Controls -->
+                <div class="map-toolbar">
+                    <div class="data-source-badge" id="dataSourceBadge">
+                        <span class="dsb-icon">🛰️</span>
+                        <span class="dsb-text" id="dataSourceText">Loading…</span>
+                    </div>
+                    <div id="forecastControls" class="forecast-controls hidden">
+                        <label class="fc-label">Forecast Horizon:</label>
+                        <select id="forecastHorizon" class="fc-select" onchange="onForecastHorizonChange()">
+                            <option value="7" selected>7-Day Ahead</option>
+                            <option value="30">30-Day Ahead</option>
+                        </select>
+                        <button class="fc-train-btn" id="btnTrainForecast" onclick="trainForecastModel()">
+                            <i data-lucide="brain" class="btn-ico"></i> Train AI Forecast
+                        </button>
+                    </div>
+                </div>
+
+                <div class="map-container">
+                    <div id="map3D" class="leaflet-map"></div>
+
+                    <!-- Windy-Style 48-Hour Forecast Scrubbing Timeline Bar -->
+                    <div class="windy-timeline-bar" id="windyTimelineBar">
+                        <div class="timeline-controls">
+                            <button class="timeline-play-btn" id="btnPlayTimeline" onclick="toggleTimelinePlay()" title="Auto-Play Hourly Forecast">
+                                <i data-lucide="play" id="icoTimelinePlay"></i>
+                            </button>
+                            <div class="timeline-info-badge">
+                                <div class="timeline-date-tag" id="txtTimelineTime">📅 Today, 14:00</div>
+                                <div class="timeline-metrics-tag" id="txtTimelineMetrics">🌡️ 34.2°C | ☀️ 840 W/m² | 💧 52%</div>
+                            </div>
+                        </div>
+                        <div class="timeline-slider-wrapper">
+                            <input type="range" id="timelineSlider" min="0" max="47" value="14" class="timeline-range" oninput="onTimelineSliderInput(this.value)">
+                            <div class="timeline-labels">
+                                <span>Today 00:00</span>
+                                <span>Today 12:00</span>
+                                <span class="highlight">Tomorrow 06:00</span>
+                                <span class="highlight-peak">Tomorrow 15:00 (Peak Heat)</span>
+                                <span>Tomorrow 23:00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="map-legend">
+                        <span class="legend-title" id="legendTitle">REAL-TIME TEMPERATURE SCALE</span>
+                        <div class="legend-items" id="legendItems">
+                            <span class="legend-dot extreme"></span><span>Extreme (≥40°C)</span>
+                            <span class="legend-dot high"></span><span>High (36–40°C)</span>
+                            <span class="legend-dot warm"></span><span>Warm (31–36°C)</span>
+                            <span class="legend-dot mild"></span><span>Mild (26–31°C)</span>
+                            <span class="legend-dot cool"></span><span>Cool (&lt;26°C)</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 2: Heat Charts -->
+            <section class="tab-panel" id="panel-charts">
+                <div class="panel-header">
+                    <h2 id="chartsPanelTitle">Heat Charts — Selected City Analytics</h2>
+                    <p id="chartsPanelSub">Vegetation, water, built-up indices and temperature distribution for the selected city.</p>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3 id="titleLandCover">Land Cover Breakdown</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chartLandCover"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 id="titleCityTemps">City vs Benchmark Temperatures</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chartCityTemps"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 id="titleIndices">Spectral &amp; Microclimate Profile</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chartIndices"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 id="titleTiers">Grid Temperature Tier Distribution</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chartTiers"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section 3: Scenarios (Simulation) -->
+            <section class="tab-panel" id="panel-scenarios">
+                <div class="panel-header">
+                    <h2>Scenarios</h2>
+                    <p>Simulate what happens when you add trees, water bodies, cool roofs, or shade canopies under real Indian budgets.</p>
+                </div>
+                <div class="scenarios-layout">
+                    <div class="scenario-controls">
+                        <h3>Cooling Interventions</h3>
+                        <div class="slider-group">
+                            <div class="slider-row">
+                                <label>🌲 Trees &amp; Greenery</label>
+                                <span class="slider-val" id="valGreen">30%</span>
+                            </div>
+                            <input type="range" id="sliderGreen" min="0" max="80" value="30" class="range-slider">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-row">
+                                <label>💧 Water Bodies</label>
+                                <span class="slider-val" id="valWater">15%</span>
+                            </div>
+                            <input type="range" id="sliderWater" min="0" max="50" value="15" class="range-slider">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-row">
+                                <label>🏢 Cool Reflective Roofs</label>
+                                <span class="slider-val" id="valCoolRoof">40%</span>
+                            </div>
+                            <input type="range" id="sliderCoolRoof" min="0" max="100" value="40" class="range-slider">
+                        </div>
+                        <div class="slider-group">
+                            <div class="slider-row">
+                                <label>☂️ Shade Canopies</label>
+                                <span class="slider-val" id="valShade">15%</span>
+                            </div>
+                            <input type="range" id="sliderShade" min="0" max="60" value="15" class="range-slider">
+                        </div>
+
+                        <button class="btn-simulate" onclick="runSimulation(true)" style="margin-bottom:10px;">
+                            <i data-lucide="play" class="btn-ico"></i> Run Simulation
+                        </button>
+                        <button class="btn-ai-recommend" onclick="autoApplyAIRecommendation()" style="width:100%; padding:10px 14px; background:linear-gradient(135deg, #0284c7, #0d9488); border:none; border-radius:6px; color:#fff; font-weight:600; font-size:0.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:all 0.2s;">
+                            <i data-lucide="bot" class="btn-ico"></i> Auto-Apply AI Recommended Strategy
+                        </button>
+                    </div>
+
+                    <div class="scenario-results">
+                        <h3>Simulation Results</h3>
+                        <div class="result-grid">
+                            <div class="result-card">
+                                <span class="result-label">Current Heat</span>
+                                <span class="result-value" id="txtBaselineLST">—</span>
+                            </div>
+                            <div class="result-card accent">
+                                <span class="result-label">After Simulation</span>
+                                <span class="result-value" id="txtSimulatedLST">—</span>
+                            </div>
+                            <div class="result-card">
+                                <span class="result-label">Temperature Drop</span>
+                                <span class="result-value" id="txtDeltaTemp">—</span>
+                            </div>
+                            <div class="result-card">
+                                <span class="result-label">CO₂ Sequestration</span>
+                                <span class="result-value" id="txtCO2">—</span>
+                            </div>
+                        </div>
+
+                        <!-- AI Strategy Recommendation Box -->
+                        <div id="aiStrategyContainer" style="margin-top:14px; background:#18181b; border:1px solid #27272a; border-radius:8px; padding:12px;">
+                            <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; color:#38bdf8; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                                🤖 AI RECOMMENDED STRATEGY
+                            </div>
+                            <div id="aiStrategyTitle" style="font-size:0.85rem; color:#e4e4e7; font-weight:600; margin-bottom:8px;">Analyzing microclimate…</div>
+                            <div id="aiStrategyCards" style="display:flex; flex-direction:column; gap:8px;"></div>
+                        </div>
+
+                        <div class="divider-h"></div>
+
+                        <h3>🇮🇳 Real-Time Indian Budget Climate Allocation</h3>
+                        <p style="font-size:0.72rem; color:#94a3b8; margin-bottom:10px;">Allocate Indian Government urban climate funding under AMRUT 2.0 &amp; National Cool Roof Initiatives.</p>
+                        
+                        <div class="slider-group">
+                            <div class="slider-row">
+                                <label>🇮🇳 Municipal Climate Budget (₹ INR)</label>
+                                <span class="slider-val" id="txtBudgetLabel" style="color:#22c55e; font-weight:800;">₹2.50 Crores</span>
+                            </div>
+                            <input type="range" id="sliderBudget" min="0.25" max="25.0" step="0.25" value="2.5" class="range-slider" oninput="onIndianBudgetSliderChange(this.value)">
+                        </div>
+
+                        <!-- Real-Time Indian Budget Grant Breakdown Card -->
+                        <div id="inrBudgetBreakdownCard" style="background:#0f172a; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:12px; margin-bottom:12px;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:#38bdf8; font-weight:700; margin-bottom:6px;">GOVERNMENT GRANT &amp; SUBSIDY BREAKDOWN</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.75rem; margin-bottom:8px;">
+                                <div style="background:rgba(0,0,0,0.3); padding:6px 8px; border-radius:6px;">
+                                    <span style="font-size:0.62rem; color:#94a3b8; display:block;">AMRUT 2.0 (50% Grant)</span>
+                                    <strong id="txtAmrutGrant" style="color:#22c55e;">₹1.25 Cr</strong>
+                                </div>
+                                <div style="background:rgba(0,0,0,0.3); padding:6px 8px; border-radius:6px;">
+                                    <span style="font-size:0.62rem; color:#94a3b8; display:block;">State Policy (25% Subsidy)</span>
+                                    <strong id="txtStateSubsidy" style="color:#38bdf8;">₹0.63 Cr</strong>
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#cbd5e1; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px;">
+                                <span>Health Cost Savings:</span>
+                                <strong id="txtInrHealthROI" style="color:#eab308;">₹2.90 Crores/yr</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#cbd5e1; margin-top:2px;">
+                                <span>Energy Grid Savings:</span>
+                                <strong id="txtInrEnergyROI" style="color:#10b981;">₹72.8 Lakhs/yr</strong>
+                            </div>
+                        </div>
+
+                        <button class="btn-ga" onclick="runGAOptimization(true)">
+                            <i data-lucide="sparkles" class="btn-ico"></i> Evolve Optimal Plan (Indian Budget GA)
+                        </button>
+                        <div id="gaResultsBox" class="ga-box hidden">
+                            <div class="ga-row"><span>Citywide Temp Drop:</span><strong id="txtGaDrop">—</strong></div>
+                            <div class="ga-row"><span>Indian Plan Outlay:</span><strong id="txtGaCost">—</strong></div>
+                            <div class="ga-row"><span>ROI Effectiveness:</span><strong id="txtGaEffect">—</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ─── Info Modal ─── -->
+    <div class="modal-overlay" id="infoModal">
+        <div class="modal-card">
+            <button class="modal-close" onclick="toggleInfoModal()"><i data-lucide="x"></i></button>
+            <h2>About HeatWatch AI</h2>
+            <div class="modal-body">
+                <h3>How it Works</h3>
+                <p>HeatWatch AI is a two-stage machine learning platform for urban heat island analysis and mitigation:</p>
+                
+                <h4>Stage A — Predictive Digital Twin</h4>
+                <p>Features two viable model architectures trained with <strong>Spatial District Block-Split</strong> validation across <strong>65,207 real satellite grid cells</strong>:</p>
+                <ul>
+                    <li><strong>Option 1 (Tabular / Gradient-Boosted):</strong> Random Forest &amp; HistGradientBoosting Ensemble (94.1% R²).</li>
+                    <li><strong>Option 2 (Deep Learning Neural Net / CNN):</strong> Multi-layer Neural Network / Spatial Patch Regressor (94.3% R²).</li>
+                </ul>
+                
+                <h4>Stage B — Prescriptive GA Optimizer</h4>
+                <p>A <strong>Genetic Algorithm (GA)</strong> evolves optimal intervention maps (trees, cool roofs, water bodies, shade canopies) under budget constraints and equity/vulnerability weighting.</p>
+                
+                <h4>Model Performance (Spatial District Holdout)</h4>
+                <table class="info-table">
+                    <tr><td>Option 1 (Tabular Gradient-Boosted)</td><td><strong id="infoR2Op1">0.9413 R²</strong></td></tr>
+                    <tr><td>Option 2 (Deep Learning Network)</td><td><strong id="infoR2Op2">0.9431 R²</strong></td></tr>
+                    <tr><td>Combined Ensemble R²</td><td><strong id="infoR2">0.9434</strong></td></tr>
+                    <tr><td>Mean Absolute Error (MAE)</td><td><strong id="infoMAE">0.85°C</strong></td></tr>
+                    <tr><td>RMSE</td><td><strong id="infoRMSE">1.07°C</strong></td></tr>
+                    <tr><td>Training Dataset</td><td><strong>65,207 spatial cells (21 cities)</strong></td></tr>
+                </table>
+
+                <h4>Data Sources</h4>
+                <ul>
+                    <li><strong>Primary:</strong> D:\MINI PROJECT_NEW\data\processed (Parquet files)</li>
+                    <li><strong>Satellite:</strong> NASA ASTER GED, MODIS, Sentinel-2, Landsat-8</li>
+                    <li><strong>Features:</strong> centroid_lat, centroid_lon, lst_mean, ndvi_mean, ndbi_mean, frac_vegetation, frac_impervious, frac_water, building_density, tree_canopy_frac, air_temp_max, sky_view_factor, cooling_potential</li>
+                </ul>
+
+                <h4>Technology Stack</h4>
+                <ul>
+                    <li><strong>Backend:</strong> Python, FastAPI, scikit-learn, pandas, joblib</li>
+                    <li><strong>Frontend:</strong> HTML, CSS, JavaScript, Leaflet.js, Chart.js</li>
+                    <li><strong>GEE:</strong> Google Earth Engine Python API (optional live queries)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="frontend/app.js?v=4.0"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
