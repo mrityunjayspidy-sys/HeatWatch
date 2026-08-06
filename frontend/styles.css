@@ -1353,10 +1353,11 @@ html, body {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        height: 52px;
-        min-height: 52px;
+        height: 48px;
+        min-height: 48px;
         padding: 0 14px;
-        background: var(--bg-secondary);
+        background: rgba(10, 10, 10, 0.95);
+        backdrop-filter: blur(12px);
         border-bottom: 1px solid var(--border);
         z-index: 1050;
         flex-shrink: 0;
@@ -1364,12 +1365,12 @@ html, body {
 
     .mobile-menu-btn,
     .mobile-info-btn {
-        background: transparent;
+        background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--border-light);
-        border-radius: 6px;
+        border-radius: 8px;
         color: var(--text-primary);
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1384,23 +1385,23 @@ html, body {
 
     .mobile-menu-btn svg,
     .mobile-info-btn svg {
-        width: 20px;
-        height: 20px;
+        width: 18px;
+        height: 18px;
     }
 
     .mobile-brand-title {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         font-weight: 800;
-        font-size: 1rem;
+        font-size: 0.95rem;
         letter-spacing: -0.01em;
         color: #ffffff;
     }
 
     .brand-icon-sm {
-        width: 28px;
-        height: 28px;
+        width: 26px;
+        height: 26px;
         border: 1.5px solid #fff;
         border-radius: 6px;
         display: flex;
@@ -1409,8 +1410,8 @@ html, body {
     }
 
     .brand-icon-sm svg {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
     }
 
     /* Off-Canvas Sidebar Drawer & Backdrop */
@@ -1418,8 +1419,8 @@ html, body {
         display: block;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(6px);
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(8px);
         z-index: 2999;
         opacity: 0;
         pointer-events: none;
@@ -1441,7 +1442,7 @@ html, body {
         height: 100dvh;
         z-index: 3000;
         border-right: 1px solid var(--border-light);
-        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.9);
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.95);
         transform: translateX(-100%);
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         padding-bottom: 30px;
@@ -1463,7 +1464,7 @@ html, body {
         height: 34px;
         background: var(--bg-card);
         border: 1px solid var(--border-light);
-        border-radius: 6px;
+        border-radius: 8px;
         color: var(--text-secondary);
         cursor: pointer;
     }
@@ -1473,22 +1474,25 @@ html, body {
         height: 18px;
     }
 
-    /* Bottom Navigation Bar for Mobile */
+    /* Ultra Clean Floating Pill Bottom Dock */
     .mobile-bottom-nav {
         display: flex;
         position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 60px;
-        background: rgba(10, 10, 10, 0.96);
-        backdrop-filter: blur(16px);
-        border-top: 1px solid var(--border);
+        bottom: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: min(340px, 90vw);
+        height: 54px;
+        background: rgba(12, 12, 12, 0.92);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 27px;
         z-index: 2000;
         justify-content: space-around;
         align-items: center;
-        padding-bottom: env(safe-area-inset-bottom);
-        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+        padding: 0 6px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     .mobile-nav-btn {
@@ -1497,121 +1501,145 @@ html, body {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 3px;
-        height: 100%;
+        gap: 2px;
+        height: 42px;
         background: transparent;
         border: none;
         color: var(--text-muted);
         font-family: var(--font);
-        font-size: 0.68rem;
+        font-size: 0.65rem;
         font-weight: 600;
         cursor: pointer;
-        transition: color 0.15s ease;
-        padding: 4px 0;
+        transition: all 0.2s ease;
+        border-radius: 21px;
     }
 
     .mobile-nav-btn svg {
-        width: 20px;
-        height: 20px;
-        transition: transform 0.15s ease;
+        width: 18px;
+        height: 18px;
+        transition: transform 0.2s ease;
     }
 
     .mobile-nav-btn.active {
         color: #ffffff;
+        background: rgba(255, 255, 255, 0.12);
     }
 
     .mobile-nav-btn.active svg {
-        transform: translateY(-1px);
+        transform: scale(1.1);
         stroke: #38bdf8;
     }
 
     /* Main Content Viewport Adjustment */
     .main-content {
-        height: calc(100dvh - 52px - 60px);
+        height: calc(100dvh - 48px);
         flex: 1;
         width: 100vw;
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
-        margin-bottom: 60px;
+        margin-bottom: 0;
     }
 
     .tab-panel {
         height: 100%;
         width: 100%;
+        position: relative;
     }
 
-    .panel-header {
-        padding: 12px 14px;
+    /* Hide Title text on Heat Map panel header on Mobile for 100% full map view */
+    #panel-heatmap .panel-header {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        background: transparent;
+        border-bottom: none;
+        padding: 8px 10px;
+        pointer-events: none;
     }
 
-    .panel-header h2 {
-        font-size: 1.05rem;
+    #panel-heatmap .panel-header-title {
+        display: none;
     }
 
-    .panel-header p {
-        font-size: 0.72rem;
-    }
-
-    /* Map View Switch Buttons Scroll Row */
-    .panel-header > div:last-child {
+    #panel-heatmap .panel-header-actions {
         width: 100%;
-        margin-top: 6px;
         display: flex;
         gap: 6px;
         overflow-x: auto;
-        padding-bottom: 4px;
-        -webkit-overflow-scrolling: touch;
+        padding-bottom: 2px;
+        pointer-events: auto;
         scrollbar-width: none;
     }
 
     .btn-map-view {
         flex: 1 0 auto;
-        padding: 6px 10px;
-        font-size: 0.75rem;
+        padding: 5px 10px;
+        font-size: 0.72rem;
         white-space: nowrap;
+        background: rgba(13, 17, 26, 0.85);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 20px;
+    }
+
+    .btn-map-view.active {
+        background: #ffffff;
+        color: #000000;
     }
 
     /* Map Toolbar & Badges */
     .map-toolbar {
-        padding: 8px 12px;
+        position: absolute;
+        top: 44px;
+        left: 10px;
+        right: 10px;
+        z-index: 999;
+        padding: 0;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
+        pointer-events: none;
     }
 
     .data-source-badge {
-        font-size: 0.72rem;
-        padding: 4px 8px;
+        font-size: 0.68rem;
+        padding: 3px 8px;
+        pointer-events: auto;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(8px);
     }
 
     .forecast-controls {
         width: 100%;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
+        pointer-events: auto;
     }
 
     .fc-select, .fc-train-btn {
-        font-size: 0.75rem;
-        padding: 6px 10px;
+        font-size: 0.72rem;
+        padding: 5px 8px;
     }
 
-    /* Map & Leaflet Mobile Styling */
+    /* Full-Screen Map Container on Mobile */
     .map-container {
-        height: calc(100% - 90px);
-        min-height: 350px;
+        height: 100%;
+        width: 100%;
     }
 
     .leaflet-map {
-        transform: perspective(1000px) rotateX(8deg) scale(1.01);
+        transform: perspective(1000px) rotateX(6deg) scale(1.01);
         width: 105%;
-        height: 120%;
-        top: -10%;
+        height: 115%;
+        top: -7%;
         left: -2.5%;
     }
 
     .leaflet-control-container .leaflet-top.leaflet-left {
-        top: 8px;
-        left: 8px;
+        top: 75px;
+        left: 10px;
     }
 
     .leaflet-control-zoom {
@@ -1620,21 +1648,22 @@ html, body {
     }
 
     .leaflet-control-zoom a {
-        width: 36px !important;
-        height: 36px !important;
-        line-height: 36px !important;
-        font-size: 1.1rem !important;
+        width: 34px !important;
+        height: 34px !important;
+        line-height: 34px !important;
+        font-size: 1rem !important;
     }
 
     /* Legend Positioning on Mobile */
     .map-legend {
-        bottom: 82px;
+        bottom: 145px;
         right: 10px;
         left: auto;
         padding: 6px 10px;
-        border-radius: 8px;
-        max-width: 155px;
+        border-radius: 10px;
+        max-width: 150px;
         background: rgba(0, 0, 0, 0.88);
+        backdrop-filter: blur(10px);
     }
 
     .legend-title {
@@ -1646,7 +1675,7 @@ html, body {
         display: flex;
         flex-direction: column;
         gap: 3px;
-        font-size: 0.65rem;
+        font-size: 0.62rem;
     }
 
     .legend-dot {
@@ -1654,41 +1683,43 @@ html, body {
         height: 8px;
     }
 
-    /* Windy Timeline Bar on Mobile */
+    /* Windy Timeline Bar on Mobile (Floating above Pill Dock) */
     .windy-timeline-bar {
         width: calc(100% - 20px);
-        bottom: 12px;
+        bottom: 78px;
         left: 50%;
         transform: translateX(-50%);
         padding: 8px 12px;
         flex-direction: column;
-        gap: 8px;
-        border-radius: 12px;
+        gap: 6px;
+        border-radius: 14px;
+        background: rgba(13, 17, 26, 0.92);
+        backdrop-filter: blur(16px);
     }
 
     .timeline-controls {
         min-width: 0;
         width: 100%;
         justify-content: space-between;
-        gap: 8px;
+        gap: 6px;
     }
 
     .timeline-play-btn {
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
     }
 
     .timeline-play-btn svg {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
     }
 
     .timeline-date-tag {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
     }
 
     .timeline-metrics-tag {
-        font-size: 0.68rem;
+        font-size: 0.65rem;
     }
 
     .timeline-slider-wrapper {
@@ -1696,16 +1727,16 @@ html, body {
     }
 
     .timeline-range {
-        height: 8px;
+        height: 6px;
     }
 
     .timeline-range::-webkit-slider-thumb {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
     }
 
     .timeline-labels {
-        font-size: 0.58rem;
+        font-size: 0.56rem;
     }
 
     .timeline-labels span:nth-child(2),
@@ -1717,7 +1748,7 @@ html, body {
     .charts-grid {
         grid-template-columns: 1fr;
         gap: 12px;
-        padding: 12px;
+        padding: 12px 12px 80px 12px;
     }
 
     .chart-card {
@@ -1738,7 +1769,7 @@ html, body {
     .scenarios-layout {
         grid-template-columns: 1fr;
         gap: 14px;
-        padding: 12px;
+        padding: 12px 12px 80px 12px;
     }
 
     .scenario-controls,
