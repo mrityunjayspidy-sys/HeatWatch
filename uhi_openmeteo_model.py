@@ -175,6 +175,48 @@ class OpenMeteoUHIFetcher:
         return results
 
     @staticmethod
+    def fetch_city_forecast(city_name: str) -> dict:
+        city_name_cap = city_name.title().strip()
+        cfg = INDIAN_CITIES.get(city_name_cap, {"lat": 13.0827, "lon": 80.2707, "state": "Tamil Nadu"})
+        lat, lon = cfg["lat"], cfg["lon"]
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": lat,
+            "longitude": lon,
+            "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure",
+            "timezone": "auto",
+            "forecast_days": 3
+        }
+        try:
+            res = requests.get(url, params=params, timeout=10).json()
+            hourly = res.get("hourly", {})
+            times = hourly.get("time", [])
+            temps = hourly.get("temperature_2m", [])
+            humids = hourly.get("relative_humidity_2m", [])
+            winds = hourly.get("wind_speed_10m", [])
+            
+            series = []
+            for i in range(len(times)):
+                t_urb = temps[i] if i < len(temps) else 30.0
+                series.append({
+                    "time": times[i],
+                    "hour_label": times[i].split("T")[-1] if "T" in times[i] else str(i),
+                    "temperature_celsius": t_urb,
+                    "humidity_pct": humids[i] if i < len(humids) else 50.0,
+                    "wind_speed_kmh": winds[i] if i < len(winds) else 5.0,
+                    "uhi_intensity": round(1.2 + (t_urb * 0.05), 1)
+                })
+            return {
+                "city": city_name_cap,
+                "latitude": lat,
+                "longitude": lon,
+                "forecast_hours": len(series),
+                "hourly": series
+            }
+        except Exception as e:
+            return {"city": city_name_cap, "error": str(e), "hourly": []}
+
+    @staticmethod
     def fetch_city_archive(lat: float, lon: float, start_date: str = "2023-01-01", end_date: str = "2023-12-31") -> pd.DataFrame:
         url = "https://archive-api.open-meteo.com/v1/archive"
         params = {

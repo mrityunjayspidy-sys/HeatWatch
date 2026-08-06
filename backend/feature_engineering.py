@@ -11,6 +11,7 @@ Derives spatial and spectral indices per grid-cell:
 - Spatial Distance to Nearest Green / Blue Space
 """
 
+import datetime
 import numpy as np
 import pandas as pd
 
@@ -118,3 +119,73 @@ def derive_grid_cell_features(df: pd.DataFrame) -> pd.DataFrame:
         df['cooling_potential'] = df.get('frac_vegetation', 0.1) * 2.5 + df.get('frac_water', 0.0) * 3.0
 
     return df
+
+
+def predict_future_grid_temperatures(df: pd.DataFrame, days_ahead: int = 7) -> pd.DataFrame:
+    """
+    AI Predictive Model: Computes future land surface temperature projections (7-day and 30-day ahead)
+    for every grid block cell based on current LST, NDVI, NDBI, seasonality, and thermal retention.
+
+    Uses the trained AI forecast model (gee_forecast_model) when available,
+    falling back to the physics-based analytical approach.
+    """
+    df = df.copy()
+
+    # Try using the trained AI forecast model
+    try:
+        from gee_forecast_model import forecast_model
+        if forecast_model.is_trained:
+            grid_cells = df.to_dict(orient='records')
+            # 7-day forecast
+            forecast_7d = forecast_model.predict_grid_forecast(grid_cells, horizon=7)
+            df['future_lst_7d'] = [cell.get('forecast_lst_7d', cell.get('lst_mean', 32.0)) for cell in forecast_7d]
+
+            # 30-day forecast
+            forecast_30d = forecast_model.predict_grid_forecast(grid_cells, horizon=30)
+            df['future_lst_30d'] = [cell.get('forecast_lst_30d', cell.get('lst_mean', 32.0)) for cell in forecast_30d]
+
+            current_lst = df.get('lst_mean', pd.Series(32.0, index=df.index))
+            if days_ahead == 30:
+                df['temp_delta_celsius'] = (df['future_lst_30d'] - current_lst).round(2)
+                df['future_lst_predicted'] = df['future_lst_30d']
+            else:
+                df['temp_delta_celsius'] = (df['future_lst_7d'] - current_lst).round(2)
+                df['future_lst_predicted'] = df['future_lst_7d']
+
+            df['forecast_model'] = 'TRAINED_ML'
+            return df
+    except (ImportError, Exception) as e:
+        print(f"[FE] AI forecast unavailable, using analytical fallback: {e}")
+
+    # ── Analytical Fallback ──
+    current_month = datetime.datetime.now().month
+
+    # Seasonal solar declination warming factor
+    seasonal_factor = np.sin((current_month - 3) * np.pi / 6.0) * 1.5
+
+    current_lst = df.get('lst_mean', pd.Series(32.0, index=df.index))
+    ndvi = df.get('ndvi_mean', pd.Series(0.12, index=df.index))
+    ndbi = df.get('ndbi_mean', pd.Series(0.20, index=df.index))
+    tree = df.get('tree_canopy_frac', pd.Series(0.10, index=df.index))
+
+    # Built-up thermal inertia heat retention vs vegetation cooling buffer
+    heat_retention = (ndbi * 0.4 - ndvi * 0.35 - tree * 0.25).clip(-0.5, 0.5)
+
+    # 7-day future prediction
+    delta_7d = (0.35 + seasonal_factor * 0.2 + heat_retention * 0.8).round(2)
+    df['future_lst_7d'] = (current_lst + delta_7d).round(2)
+
+    # 30-day future prediction
+    delta_30d = (1.10 + seasonal_factor * 0.5 + heat_retention * 1.8).round(2)
+    df['future_lst_30d'] = (current_lst + delta_30d).round(2)
+
+    if days_ahead == 30:
+        df['temp_delta_celsius'] = delta_30d
+        df['future_lst_predicted'] = df['future_lst_30d']
+    else:
+        df['temp_delta_celsius'] = delta_7d
+        df['future_lst_predicted'] = df['future_lst_7d']
+
+    df['forecast_model'] = 'ANALYTICAL'
+    return df
+

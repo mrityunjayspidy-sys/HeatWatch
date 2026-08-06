@@ -26,6 +26,13 @@ def process_raw_datasets():
     print("STEP 1: Processing Raw Datasets in data/ Directory")
     print("=" * 60)
 
+    processed_csv = os.path.join(PROCESSED_DIR, "processed_india_uhi_dataset.csv")
+    if os.path.exists(processed_csv):
+        print(f"Loading preprocessed dataset from: {processed_csv}")
+        df_processed = pd.read_csv(processed_csv)
+        print(f" -> Successfully loaded {len(df_processed):,} records from processed dataset.")
+        return df_processed
+
     # 1. Load Hourly Climate Parquet Data (4.12M records)
     parquet_path = os.path.join(DATA_DIR, "india_climate_hourly_2014_2023_v20260321_223327.parquet")
     print(f"Loading hourly climate dataset: {parquet_path}")

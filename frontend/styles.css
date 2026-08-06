@@ -279,11 +279,32 @@ html, body {
 .map-container {
     flex: 1;
     position: relative;
+    perspective: 1200px;
+    overflow: hidden;
+    background: #090d16;
+}
+
+.map-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 36px;
+    background: linear-gradient(to bottom, rgba(9, 13, 22, 0.95), transparent);
+    pointer-events: none;
+    z-index: 999;
 }
 
 .leaflet-map {
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    width: 114%;
+    height: 150%;
+    top: -26%;
+    left: -7%;
+    transform: perspective(1200px) rotateX(15deg) scale(1.02);
+    transform-origin: center center;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .map-legend {
@@ -302,11 +323,149 @@ html, body {
     display: block;
     font-size: 0.6rem;
     font-weight: 800;
-    color: var(--text-muted);
+    color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 6px;
 }
+
+.windy-gradient-bar {
+    height: 10px;
+    border-radius: 6px;
+    background: linear-gradient(to right, #0011ff, #0088ff, #00ffaa, #eeff00, #ff8800, #ff0044, #9900ff);
+    margin: 6px 0 4px 0;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.windy-gradient-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #cbd5e1;
+}
+
+/* ─── Windy-Style 48-Hour Forecast Scrubbing Timeline Bar ─── */
+.windy-timeline-bar {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(880px, 94%);
+    background: rgba(13, 17, 26, 0.94);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 16px;
+    padding: 10px 18px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+}
+
+.timeline-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 260px;
+}
+
+.timeline-play-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0284c7, #2563eb);
+    border: none;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.timeline-play-btn:hover {
+    transform: scale(1.08);
+    background: linear-gradient(135deg, #38bdf8, #0284c7);
+}
+
+.timeline-info-badge {
+    display: flex;
+    flex-direction: column;
+}
+
+.timeline-date-tag {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #38bdf8;
+}
+
+.timeline-metrics-tag {
+    font-size: 0.65rem;
+    color: #cbd5e1;
+    white-space: nowrap;
+}
+
+.timeline-slider-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.timeline-range {
+    width: 100%;
+    accent-color: #38bdf8;
+    cursor: pointer;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.timeline-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.62rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.timeline-labels .highlight {
+    color: #38bdf8;
+}
+
+.timeline-labels .highlight-peak {
+    color: #ef4444;
+    font-weight: 800;
+}
+
+/* Floating Live City Temperature Badges */
+.city-temp-badge {
+    background: rgba(15, 23, 42, 0.90) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    backdrop-filter: blur(8px);
+    border-radius: 20px !important;
+    padding: 4px 10px !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-size: 0.75rem !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.city-temp-badge .badge-temp {
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
 
 .legend-items {
     display: grid;
@@ -851,3 +1010,300 @@ html, body {
 }
 
 
+/* ─── GEE Status Indicator ─── */
+.gee-status-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    margin: 0 12px 10px 12px;
+    background: #111111;
+    border: 1px solid #222222;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    color: #a0a0a0;
+    letter-spacing: 0.3px;
+}
+
+.gee-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #666;
+    flex-shrink: 0;
+    transition: background 0.3s;
+}
+
+.gee-status-dot.connected {
+    background: #22c55e;
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+    animation: gee-pulse 2s ease-in-out infinite;
+}
+
+.gee-status-dot.disconnected {
+    background: #f59e0b;
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+
+.gee-status-dot.error {
+    background: #ef4444;
+}
+
+@keyframes gee-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ─── Map Toolbar (Data Source + Forecast Controls) ─── */
+.map-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 16px;
+    background: #0a0a0a;
+    border-bottom: 1px solid #1a1a1a;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.data-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #38bdf8;
+    letter-spacing: 0.3px;
+    transition: all 0.3s;
+}
+
+.data-source-badge.gee-active {
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #22c55e;
+}
+
+.data-source-badge.openmeteo-active {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #f59e0b;
+}
+
+.data-source-badge.parquet-active {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #a855f7;
+}
+
+.dsb-icon { font-size: 0.85rem; }
+.dsb-text { white-space: nowrap; }
+
+/* ─── Forecast Controls ─── */
+.forecast-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.forecast-controls.hidden {
+    display: none;
+}
+
+.fc-label {
+    font-size: 0.72rem;
+    color: #a0a0a0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.fc-select {
+    padding: 4px 10px;
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 5px;
+    color: #e4e4e7;
+    font-size: 0.75rem;
+    font-family: var(--font);
+    cursor: pointer;
+}
+
+/* ─── Leaflet Dark Background & Container Overrides ─── */
+.map-container,
+.leaflet-container,
+.leaflet-map,
+.leaflet-pane,
+.leaflet-tile-pane,
+.leaflet-layer,
+.leaflet-tile-container {
+    background: #090d16 !important;
+}
+
+/* ─── Compact 3D & Open-Meteo Popup Layout (Fixed Width & Wrapping) ─── */
+.leaflet-popup-content-wrapper {
+    background: rgba(13, 17, 26, 0.96) !important;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+    color: #e2e8f0;
+    padding: 0 !important;
+}
+
+.leaflet-popup-content {
+    margin: 10px 14px !important;
+    width: max-content !important;
+    min-width: 260px !important;
+    max-width: 320px !important;
+    line-height: 1.4 !important;
+    box-sizing: border-box !important;
+}
+
+.leaflet-popup-tip {
+    background: rgba(13, 17, 26, 0.96) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.heat-popup {
+    padding: 2px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.heat-popup h4 {
+    font-size: 0.80rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 6px 0;
+    white-space: nowrap;
+}
+
+.popup-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #f8fafc;
+    white-space: nowrap;
+}
+
+.popup-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.72rem;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.popup-row span {
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.popup-row strong {
+    white-space: nowrap;
+}
+
+.popup-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 8px;
+    margin-bottom: 6px;
+}
+
+.popup-cell {
+    background: rgba(0, 0, 0, 0.35);
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+}
+
+.popup-cell span {
+    font-size: 0.60rem;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.popup-cell strong {
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.popup-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.62rem;
+    color: #64748b;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fc-select:focus {
+    outline: none;
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+.fc-train-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    border: 1px solid rgba(124, 58, 237, 0.5);
+    border-radius: 5px;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.fc-train-btn:hover {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+    transform: translateY(-1px);
+}
+
+.fc-train-btn .btn-ico {
+    width: 12px;
+    height: 12px;
+}
+
+/* ─── Forecast Legend Override ─── */
+.legend-dot.forecast-hot {
+    background: #a855f7;
+}
+
+.legend-dot.forecast-warm {
+    background: #8b5cf6;
+}
+
+.legend-dot.forecast-neutral {
+    background: #6366f1;
+}
+
+.legend-dot.forecast-cool {
+    background: #818cf8;
+}
+
+.legend-dot.forecast-cold {
+    background: #c4b5fd;
+}

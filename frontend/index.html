@@ -10,10 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=4.0">
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -27,6 +28,12 @@
                     <h1 class="brand-title">HeatWatch AI</h1>
                     <p class="brand-sub">Urban Heat Intelligence</p>
                 </div>
+            </div>
+
+            <!-- GEE Satellite Status Indicator -->
+            <div id="geeStatusBar" class="gee-status-bar">
+                <div class="gee-status-dot" id="geeStatusDot"></div>
+                <span id="geeStatusText">Checking GEE…</span>
             </div>
 
             <div class="sidebar-section">
@@ -149,25 +156,71 @@
 
             <!-- Section 1: Heat Map -->
             <section class="tab-panel active" id="panel-heatmap">
-                <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <div>
-                        <h2>Real-Time Open-Meteo Heat Map</h2>
-                        <p>Live real-time weather feeds across 35+ cities in India, color-coded by temperature.</p>
+                        <h2>Real-Time Satellite Heat Map</h2>
+                        <p>Live satellite & weather data across 57+ cities in India, color-coded by surface temperature.</p>
                     </div>
-                    <div style="display:flex; gap:8px;">
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
                         <button id="btnViewIndiaMap" class="btn-map-view active" onclick="switchMapView('india')">
                             🇮🇳 All-India Live Map
                         </button>
                         <button id="btnViewCityGrid" class="btn-map-view" onclick="switchMapView('city')">
                             📍 City Microclimate Grid
                         </button>
+                        <button id="btnViewForecast" class="btn-map-view" onclick="switchMapView('forecast')">
+                            🔮 Forecast View
+                        </button>
                     </div>
                 </div>
+
+                <!-- Data Source Badge + Forecast Controls -->
+                <div class="map-toolbar">
+                    <div class="data-source-badge" id="dataSourceBadge">
+                        <span class="dsb-icon">🛰️</span>
+                        <span class="dsb-text" id="dataSourceText">Loading…</span>
+                    </div>
+                    <div id="forecastControls" class="forecast-controls hidden">
+                        <label class="fc-label">Forecast Horizon:</label>
+                        <select id="forecastHorizon" class="fc-select" onchange="onForecastHorizonChange()">
+                            <option value="7" selected>7-Day Ahead</option>
+                            <option value="30">30-Day Ahead</option>
+                        </select>
+                        <button class="fc-train-btn" id="btnTrainForecast" onclick="trainForecastModel()">
+                            <i data-lucide="brain" class="btn-ico"></i> Train AI Forecast
+                        </button>
+                    </div>
+                </div>
+
                 <div class="map-container">
                     <div id="map3D" class="leaflet-map"></div>
+
+                    <!-- Windy-Style 48-Hour Forecast Scrubbing Timeline Bar -->
+                    <div class="windy-timeline-bar" id="windyTimelineBar">
+                        <div class="timeline-controls">
+                            <button class="timeline-play-btn" id="btnPlayTimeline" onclick="toggleTimelinePlay()" title="Auto-Play Hourly Forecast">
+                                <i data-lucide="play" id="icoTimelinePlay"></i>
+                            </button>
+                            <div class="timeline-info-badge">
+                                <div class="timeline-date-tag" id="txtTimelineTime">📅 Today, 14:00</div>
+                                <div class="timeline-metrics-tag" id="txtTimelineMetrics">🌡️ 34.2°C | ☀️ 840 W/m² | 💧 52%</div>
+                            </div>
+                        </div>
+                        <div class="timeline-slider-wrapper">
+                            <input type="range" id="timelineSlider" min="0" max="47" value="14" class="timeline-range" oninput="onTimelineSliderInput(this.value)">
+                            <div class="timeline-labels">
+                                <span>Today 00:00</span>
+                                <span>Today 12:00</span>
+                                <span class="highlight">Tomorrow 06:00</span>
+                                <span class="highlight-peak">Tomorrow 15:00 (Peak Heat)</span>
+                                <span>Tomorrow 23:00</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="map-legend">
-                        <span class="legend-title">REAL-TIME TEMPERATURE SCALE</span>
-                        <div class="legend-items">
+                        <span class="legend-title" id="legendTitle">REAL-TIME TEMPERATURE SCALE</span>
+                        <div class="legend-items" id="legendItems">
                             <span class="legend-dot extreme"></span><span>Extreme (≥40°C)</span>
                             <span class="legend-dot high"></span><span>High (36–40°C)</span>
                             <span class="legend-dot warm"></span><span>Warm (31–36°C)</span>
@@ -216,7 +269,7 @@
             <section class="tab-panel" id="panel-scenarios">
                 <div class="panel-header">
                     <h2>Scenarios</h2>
-                    <p>Simulate what happens when you add trees, water bodies, cool roofs, or shade canopies.</p>
+                    <p>Simulate what happens when you add trees, water bodies, cool roofs, or shade canopies under real Indian budgets.</p>
                 </div>
                 <div class="scenarios-layout">
                     <div class="scenario-controls">
@@ -290,21 +343,47 @@
 
                         <div class="divider-h"></div>
 
-                        <h3>GA Cooling Optimizer</h3>
+                        <h3>🇮🇳 Real-Time Indian Budget Climate Allocation</h3>
+                        <p style="font-size:0.72rem; color:#94a3b8; margin-bottom:10px;">Allocate Indian Government urban climate funding under AMRUT 2.0 &amp; National Cool Roof Initiatives.</p>
+                        
                         <div class="slider-group">
                             <div class="slider-row">
-                                <label>Budget Limit (USD)</label>
-                                <span class="slider-val" id="txtBudgetLabel">$25,000</span>
+                                <label>🇮🇳 Municipal Climate Budget (₹ INR)</label>
+                                <span class="slider-val" id="txtBudgetLabel" style="color:#22c55e; font-weight:800;">₹2.50 Crores</span>
                             </div>
-                            <input type="range" id="sliderBudget" min="5000" max="100000" step="5000" value="25000" class="range-slider" oninput="document.getElementById('txtBudgetLabel').textContent='$'+Number(this.value).toLocaleString()">
+                            <input type="range" id="sliderBudget" min="0.25" max="25.0" step="0.25" value="2.5" class="range-slider" oninput="onIndianBudgetSliderChange(this.value)">
                         </div>
+
+                        <!-- Real-Time Indian Budget Grant Breakdown Card -->
+                        <div id="inrBudgetBreakdownCard" style="background:#0f172a; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:12px; margin-bottom:12px;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:#38bdf8; font-weight:700; margin-bottom:6px;">GOVERNMENT GRANT &amp; SUBSIDY BREAKDOWN</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.75rem; margin-bottom:8px;">
+                                <div style="background:rgba(0,0,0,0.3); padding:6px 8px; border-radius:6px;">
+                                    <span style="font-size:0.62rem; color:#94a3b8; display:block;">AMRUT 2.0 (50% Grant)</span>
+                                    <strong id="txtAmrutGrant" style="color:#22c55e;">₹1.25 Cr</strong>
+                                </div>
+                                <div style="background:rgba(0,0,0,0.3); padding:6px 8px; border-radius:6px;">
+                                    <span style="font-size:0.62rem; color:#94a3b8; display:block;">State Policy (25% Subsidy)</span>
+                                    <strong id="txtStateSubsidy" style="color:#38bdf8;">₹0.63 Cr</strong>
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#cbd5e1; border-top:1px solid rgba(255,255,255,0.08); padding-top:6px;">
+                                <span>Health Cost Savings:</span>
+                                <strong id="txtInrHealthROI" style="color:#eab308;">₹2.90 Crores/yr</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:#cbd5e1; margin-top:2px;">
+                                <span>Energy Grid Savings:</span>
+                                <strong id="txtInrEnergyROI" style="color:#10b981;">₹72.8 Lakhs/yr</strong>
+                            </div>
+                        </div>
+
                         <button class="btn-ga" onclick="runGAOptimization(true)">
-                            <i data-lucide="sparkles" class="btn-ico"></i> Evolve Optimal Plan (GA)
+                            <i data-lucide="sparkles" class="btn-ico"></i> Evolve Optimal Plan (Indian Budget GA)
                         </button>
                         <div id="gaResultsBox" class="ga-box hidden">
-                            <div class="ga-row"><span>Citywide Drop:</span><strong id="txtGaDrop">—</strong></div>
-                            <div class="ga-row"><span>Plan Cost:</span><strong id="txtGaCost">—</strong></div>
-                            <div class="ga-row"><span>Effectiveness:</span><strong id="txtGaEffect">—</strong></div>
+                            <div class="ga-row"><span>Citywide Temp Drop:</span><strong id="txtGaDrop">—</strong></div>
+                            <div class="ga-row"><span>Indian Plan Outlay:</span><strong id="txtGaCost">—</strong></div>
+                            <div class="ga-row"><span>ROI Effectiveness:</span><strong id="txtGaEffect">—</strong></div>
                         </div>
                     </div>
                 </div>
@@ -358,7 +437,7 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=4.0"></script>
     <script>lucide.createIcons();</script>
 </body>
 </html>

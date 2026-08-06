@@ -149,5 +149,84 @@ class GEEGeospatialProvider:
 
         raise RuntimeError(f"No satellite data found near ({lat}, {lon}) in {DATA_DIR}")
 
+    def fetch_grid_satellite_lst(self, grid_cells: list) -> list:
+        """
+        Batch-fetch satellite LST for a list of grid cells.
+        Each cell dict must have 'centroid_lat' and 'centroid_lon'.
+        Returns updated list with 'gee_live_temp' and 'gee_data_source' attached.
+        
+        Strategy:
+        1. If GEE is initialized → query MODIS LST_Day_1km for each coordinate
+        2. Fallback → look up nearest parquet cell from local real satellite datasets
+        """
+        import glob
+        
+        # Pre-load all parquet data once for fast nearest-neighbor lookup
+        all_parquet_rows = []
+        parquet_files = glob.glob(os.path.join(DATA_DIR, "*", "features.parquet"))
+        for pf in parquet_files:
+            try:
+                df = pd.read_parquet(pf, columns=['centroid_lat', 'centroid_lon', 'lst_mean', 'ndvi_mean', 'ndbi_mean', 'lst_max'])
+                df['_source_file'] = pf
+                all_parquet_rows.append(df)
+            except Exception:
+                continue
+        
+        if all_parquet_rows:
+            parquet_db = pd.concat(all_parquet_rows, ignore_index=True)
+        else:
+            parquet_db = pd.DataFrame()
+        
+        results = []
+        for cell in grid_cells:
+            lat = cell.get('centroid_lat', 0)
+            lon = cell.get('centroid_lon', 0)
+            updated_cell = dict(cell)
+            
+            # Try GEE live fetch first
+            if self.ee_initialized:
+                try:
+                    point = ee.Geometry.Point([lon, lat])
+                    target_date = datetime.date.today() - datetime.timedelta(days=3)
+                    date_str = target_date.strftime("%Y-%m-%d")
+                    
+                    modis_col = ee.ImageCollection(MODIS_DAILY_LST) \
+                        .filterDate(date_str, datetime.date.today().strftime("%Y-%m-%d")) \
+                        .filterBounds(point)
+                    
+                    img = modis_col.first()
+                    if img:
+                        sampled = img.reduceRegion(
+                            reducer=ee.Reducer.mean(),
+                            geometry=point,
+                            scale=1000
+                        ).getInfo()
+                        lst_day = sampled.get('LST_Day_1km', None)
+                        if lst_day is not None:
+                            gee_lst = round((lst_day * 0.02) - 273.15, 2)
+                            updated_cell['gee_live_temp'] = gee_lst
+                            updated_cell['gee_data_source'] = 'LIVE_GEE_MODIS'
+                            results.append(updated_cell)
+                            continue
+                except Exception as e:
+                    print(f"GEE grid fetch error at ({lat},{lon}): {e}")
+            
+            # Fallback: nearest parquet cell lookup
+            if not parquet_db.empty:
+                dists = (parquet_db['centroid_lat'] - lat)**2 + (parquet_db['centroid_lon'] - lon)**2
+                min_idx = dists.idxmin()
+                nearest = parquet_db.loc[min_idx]
+                updated_cell['gee_live_temp'] = round(float(nearest['lst_mean']), 2)
+                updated_cell['gee_data_source'] = 'SATELLITE_PARQUET_DATASET'
+            else:
+                # Use existing lst_mean from the cell itself as final fallback
+                updated_cell['gee_live_temp'] = cell.get('lst_mean', 32.0)
+                updated_cell['gee_data_source'] = 'OPENMETEO_DERIVED'
+            
+            results.append(updated_cell)
+        
+        return results
+
 
 gee_provider = GEEGeospatialProvider()
+

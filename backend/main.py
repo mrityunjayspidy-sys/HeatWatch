@@ -13,15 +13,25 @@ from typing import Optional
 # UTF-8 Encoding enforcement
 sys.stdout.reconfigure(encoding='utf-8')
 
-# Ensure root path is in sys.path for uhi_openmeteo_model import
-ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
+# Ensure root and backend paths are in sys.path
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
+
+import datetime
+import requests
 
 from heat_mitigation_engine import engine
 from genetic_optimizer import ga_optimizer
 import train_model
 import uhi_openmeteo_model
+from gee_integration import gee_provider
+from feature_engineering import predict_future_grid_temperatures
+from gee_live_fetcher import satellite_engine
+from gee_forecast_model import forecast_model
 
 
 DATA_DIR = r"D:\MINI PROJECT_NEW\data\processed"
@@ -79,6 +89,14 @@ class GAOptimizeRequest(BaseModel):
     longitude: float = Field(..., example=72.8775)
     budget_usd: float = Field(25000.0, ge=1000.0, le=500000.0)
     generations: Optional[int] = Field(25, ge=5, le=100)
+
+class FuturePredictRequest(BaseModel):
+    latitude: float = Field(..., example=13.0827)
+    longitude: float = Field(..., example=80.2707)
+    days_ahead: int = Field(7, ge=1, le=365)
+    ndvi: float = Field(0.12, ge=-1.0, le=1.0)
+    ndbi: float = Field(0.20, ge=-1.0, le=1.0)
+    current_lst: Optional[float] = Field(None)
 
 class OpenMeteoRealtimeRequest(BaseModel):
     city_name: Optional[str] = Field("Chennai", example="Chennai")
@@ -180,6 +198,15 @@ def get_openmeteo_live_cities():
         return {"cities": fallback_list, "data_source": "OPENMETEO_FALLBACK", "total": len(fallback_list)}
 
 
+@app.get("/api/openmeteo/forecast/{city_name}")
+def get_city_forecast(city_name: str):
+    """
+    Fetch 72-hour Open-Meteo temperature and weather forecast for timeline slider playback.
+    """
+    return uhi_openmeteo_model.OpenMeteoUHIFetcher.fetch_city_forecast(city_name)
+
+
+
 @app.get("/api/city-grid/{city_name}")
 def get_city_grid_data(city_name: str, max_cells: int = 500):
     folder_name = city_name.lower().strip().replace(" ", "_")
@@ -198,15 +225,29 @@ def get_city_grid_data(city_name: str, max_cells: int = 500):
             if len(df) > max_cells:
                 df = df.sample(n=max_cells, random_state=42)
 
+            # AI Future Temperature Predictions
+            df = predict_future_grid_temperatures(df, days_ahead=7)
+
             cols_to_send = [c for c in [
                 'centroid_lat', 'centroid_lon', 'lst_mean', 'lst_max',
                 'ndvi_mean', 'ndbi_mean', 'frac_vegetation', 'frac_impervious',
                 'frac_water', 'tree_canopy_frac', 'water_area_frac',
                 'building_density', 'road_density', 'air_temp_max',
-                'cooling_potential', 'sky_view_factor', 'tier', 'priority_score'
+                'cooling_potential', 'sky_view_factor', 'tier', 'priority_score',
+                'future_lst_7d', 'future_lst_30d', 'temp_delta_celsius'
             ] if c in df.columns]
 
             grid_data = df[cols_to_send].to_dict(orient='records')
+
+            # Enrich with GEE satellite live temperatures
+            try:
+                grid_data = gee_provider.fetch_grid_satellite_lst(grid_data)
+            except Exception as gee_err:
+                print(f"GEE grid enrichment skipped: {gee_err}")
+                for cell in grid_data:
+                    cell['gee_live_temp'] = cell.get('lst_mean', 32.0)
+                    cell['gee_data_source'] = 'PARQUET_LST_FALLBACK'
+
             return {"city": city_name, "total_cells": len(df), "data_source": parquet_path, "grid": grid_data}
         except Exception:
             pass
@@ -216,8 +257,8 @@ def get_city_grid_data(city_name: str, max_cells: int = 500):
     city_cfg = uhi_openmeteo_model.INDIAN_CITIES.get(city_name_cap, {"lat": 20.5937, "lon": 78.9629})
     base_lat, base_lon = city_cfg["lat"], city_cfg["lon"]
 
-    rows, cols = 10, 10
-    step = 0.005
+    rows, cols = 30, 30
+    step = 0.009
     lats, lons = [], []
 
     for r in range(rows):
@@ -286,6 +327,13 @@ def get_city_grid_data(city_name: str, max_cells: int = 500):
             cell_lst = round(air_temp + temp_offset, 2)
             cell_lst_max = round(cell_lst + 2.6, 2)
 
+            # AI Future temperature predictions for this cell
+            current_month = datetime.datetime.now().month
+            seasonal_factor = np.sin((current_month - 3) * np.pi / 6.0) * 1.5
+            heat_retention = float(np.clip(ndbi * 0.4 - ndvi * 0.35 - tree_frac * 0.25, -0.5, 0.5))
+            delta_7d = round(0.35 + seasonal_factor * 0.2 + heat_retention * 0.8, 2)
+            delta_30d = round(1.10 + seasonal_factor * 0.5 + heat_retention * 1.8, 2)
+
             grid.append({
                 "centroid_lat": lat,
                 "centroid_lon": lon,
@@ -296,9 +344,20 @@ def get_city_grid_data(city_name: str, max_cells: int = 500):
                 "tree_canopy_frac": tree_frac,
                 "water_area_frac": water_frac,
                 "openmeteo_ambient_temp": round(air_temp, 1),
-                "openmeteo_humidity": humidity
+                "openmeteo_humidity": humidity,
+                "gee_live_temp": cell_lst,
+                "gee_data_source": "OPENMETEO_DERIVED",
+                "future_lst_7d": round(cell_lst + delta_7d, 2),
+                "future_lst_30d": round(cell_lst + delta_30d, 2),
+                "temp_delta_celsius": delta_7d
             })
             idx += 1
+
+    # Enrich with GEE satellite live temperatures where possible
+    try:
+        grid = gee_provider.fetch_grid_satellite_lst(grid)
+    except Exception as gee_err:
+        print(f"GEE grid enrichment skipped: {gee_err}")
 
     return {"city": city_name_cap, "total_cells": len(grid), "data_source": "LIVE_OPENMETEO_MULTI_POINT_GRID", "grid": grid}
 
@@ -321,6 +380,49 @@ def predict_heat(req: PredictRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/predict/future")
+def predict_future_temperature(req: FuturePredictRequest):
+    """
+    AI Future Temperature Prediction Endpoint.
+    Predicts surface temperature at a given lat/lon for days_ahead in the future.
+    Uses seasonal warming trends, NDVI/NDBI land-cover indices, and thermal retention physics.
+    """
+    try:
+        current_lst = req.current_lst
+        if current_lst is None:
+            # Fetch current temperature from GEE or parquet
+            try:
+                gee_result = gee_provider.fetch_aster_lst(req.latitude, req.longitude)
+                current_lst = gee_result.get('lst_celsius', 32.0)
+            except Exception:
+                current_lst = 32.0
+
+        # Build a single-row DataFrame for the prediction model
+        cell_df = pd.DataFrame([{
+            'lst_mean': current_lst,
+            'ndvi_mean': req.ndvi,
+            'ndbi_mean': req.ndbi,
+            'tree_canopy_frac': 0.10
+        }])
+
+        result_df = predict_future_grid_temperatures(cell_df, days_ahead=req.days_ahead)
+        row = result_df.iloc[0]
+
+        return {
+            "latitude": req.latitude,
+            "longitude": req.longitude,
+            "current_lst_celsius": round(current_lst, 2),
+            "days_ahead": req.days_ahead,
+            "future_lst_7d": round(float(row['future_lst_7d']), 2),
+            "future_lst_30d": round(float(row['future_lst_30d']), 2),
+            "predicted_delta_celsius": round(float(row['temp_delta_celsius']), 2),
+            "predicted_future_lst": round(float(row['future_lst_predicted']), 2),
+            "model": "AI_SEASONAL_THERMAL_RETENTION_v1"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Future Prediction Error: {str(e)}")
 
 @app.post("/api/simulate")
 def simulate_heat_reduction(req: SimulateRequest):
@@ -433,3 +535,181 @@ def get_openmeteo_uhi_status():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ═══════════════════════════════════════════════════════════════
+# NEW: GEE Live Satellite Grid + Future Temperature Forecast APIs
+# ═══════════════════════════════════════════════════════════════
+
+@app.get("/api/gee/status")
+def get_gee_status():
+    """Return GEE authentication status, cache info, and forecast model status."""
+    return {
+        "satellite_engine": satellite_engine.get_status(),
+        "forecast_model": forecast_model.get_status()
+    }
+
+
+@app.get("/api/city-grid-live/{city_name}")
+def get_city_grid_live(city_name: str, rows: int = 30, cols: int = 30, step: float = 0.009):
+    """
+    Fetch grid blocks with REAL satellite temperature data.
+    Uses 3-tier fallback: GEE Satellite → Open-Meteo API → Parquet files.
+    Each grid cell contains real LST, NDVI, NDBI, NDWI, elevation, and emissivity.
+    """
+    city_name_cap = city_name.title().strip()
+    city_cfg = uhi_openmeteo_model.INDIAN_CITIES.get(
+        city_name_cap, {"lat": 20.5937, "lon": 78.9629}
+    )
+    lat, lon = city_cfg["lat"], city_cfg["lon"]
+
+    try:
+        result = satellite_engine.fetch_city_grid_live(
+            city_name=city_name_cap,
+            lat=lat, lon=lon,
+            rows=rows, cols=cols, step=step
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Live grid fetch failed: {str(e)}")
+
+
+@app.get("/api/city-forecast/{city_name}")
+def get_city_forecast_grid(city_name: str, horizon: int = 7):
+    """
+    Predict future temperatures (7-day or 30-day ahead) for each grid cell.
+    Uses the AI forecast model trained on historical Open-Meteo data.
+    Returns current LST + predicted future LST + delta + confidence interval.
+    """
+    if horizon not in (7, 30):
+        horizon = 7
+
+    city_name_cap = city_name.title().strip()
+    city_cfg = uhi_openmeteo_model.INDIAN_CITIES.get(
+        city_name_cap, {"lat": 20.5937, "lon": 78.9629}
+    )
+    lat, lon = city_cfg["lat"], city_cfg["lon"]
+
+    try:
+        # First get current grid data
+        current_grid = satellite_engine.fetch_city_grid_live(
+            city_name=city_name_cap,
+            lat=lat, lon=lon
+        )
+        grid_cells = current_grid.get("grid", [])
+
+        # Run forecast model on each cell
+        forecast_grid = forecast_model.predict_grid_forecast(grid_cells, horizon=horizon)
+
+        return {
+            "city": city_name_cap,
+            "horizon_days": horizon,
+            "total_cells": len(forecast_grid),
+            "data_source": current_grid.get("data_source", "UNKNOWN"),
+            "forecast_model": "TRAINED_ML" if forecast_model.is_trained else "ANALYTICAL",
+            "forecast_metrics": forecast_model.metrics,
+            "grid": forecast_grid
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Forecast failed: {str(e)}")
+
+
+class ForecastTrainRequest(BaseModel):
+    latitude: float = Field(13.0827, example=13.0827)
+    longitude: float = Field(80.2707, example=80.2707)
+    start_date: Optional[str] = Field("2023-01-01", example="2023-01-01")
+    end_date: Optional[str] = Field("2024-06-30", example="2024-06-30")
+
+
+@app.post("/api/forecast/train")
+def train_forecast_model(req: ForecastTrainRequest):
+    """
+    Train the AI temperature forecasting model using Open-Meteo historical archive data.
+    This fetches hourly historical weather data and builds 7-day and 30-day prediction models.
+    """
+    try:
+        metrics = forecast_model.train_from_openmeteo_archive(
+            lat=req.latitude,
+            lon=req.longitude,
+            start_date=req.start_date or "2023-01-01",
+            end_date=req.end_date or "2024-06-30"
+        )
+        return {
+            "status": "success",
+            "message": "Forecast models trained successfully",
+            "metrics": metrics
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Forecast training failed: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# NEW: Hourly Weather Forecast Scrubbing & Real-Time Indian Budget APIs
+# ═══════════════════════════════════════════════════════════════
+
+class IndianBudgetRequest(BaseModel):
+    city_name: str = Field("Chennai", example="Chennai")
+    budget_inr_crores: float = Field(2.5, example=2.5)  # ₹ Crores (e.g. 2.50 Cr)
+    greenery_pct: float = Field(30.0, example=30.0)
+    water_pct: float = Field(15.0, example=15.0)
+    cool_roof_pct: float = Field(40.0, example=40.0)
+    shade_pct: float = Field(15.0, example=15.0)
+
+
+@app.get("/api/city-grid-hourly/{city_name}")
+def get_city_grid_hourly(city_name: str):
+    """
+    Fetch 48-hour hourly weather forecast grid frames for scrubbing time (Today 00:00 to Tomorrow 23:00).
+    """
+    city_name_cap = city_name.title().strip()
+    city_cfg = uhi_openmeteo_model.INDIAN_CITIES.get(
+        city_name_cap, {"lat": 20.5937, "lon": 78.9629}
+    )
+    lat, lon = city_cfg["lat"], city_cfg["lon"]
+
+    try:
+        return satellite_engine.fetch_hourly_forecast_grid(
+            city_name=city_name_cap, lat=lat, lon=lon
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Hourly forecast failed: {str(e)}")
+
+
+@app.post("/api/uhi/indian-budget/simulate")
+def simulate_indian_budget_mitigation(req: IndianBudgetRequest):
+    """
+    Simulate urban heat island mitigation under realistic Indian Government Urban Budget frameworks (₹ INR in Crores & Lakhs).
+    Includes AMRUT 2.0 Central Grant (50%), State Cool Roof Policy Subsidy (25%), and Net Municipal Share (25%).
+    Calculates ROI in Health Hospitalization Cost Savings (₹ Crores) & Energy Grid AC Savings (₹ Lakhs).
+    """
+    budget_cr = req.budget_inr_crores
+    amrut_grant_cr = round(budget_cr * 0.50, 2)
+    state_subsidy_cr = round(budget_cr * 0.25, 2)
+    net_municipal_cr = round(budget_cr * 0.25, 2)
+
+    total_trees = int((budget_cr * 10_00_00_000 * 0.40) / 25000)
+    cool_roof_m2 = int((budget_cr * 10_00_00_000 * 0.35) / 120)
+
+    temp_drop = round(
+        0.04 * req.greenery_pct + 0.05 * req.water_pct + 0.035 * req.cool_roof_pct + 0.02 * req.shade_pct, 2
+    )
+
+    health_savings_cr = round(temp_drop * 1.45 * (budget_cr * 0.8), 2)
+    energy_savings_lakhs = round(temp_drop * 48.5 * (budget_cr * 0.6), 2)
+
+    return {
+        "city": req.city_name,
+        "budget_total_inr_crores": budget_cr,
+        "amrut_central_grant_50_pct": f"₹{amrut_grant_cr:.2f} Cr",
+        "state_policy_subsidy_25_pct": f"₹{state_subsidy_cr:.2f} Cr",
+        "net_municipal_outlay_25_pct": f"₹{net_municipal_cr:.2f} Cr",
+        "simulated_temp_drop_celsius": f"-{temp_drop:.2f}°C",
+        "trees_planted": f"{total_trees:,} Trees",
+        "cool_roof_area_m2": f"{cool_roof_m2:,} m²",
+        "estimated_annual_health_savings_inr": f"₹{health_savings_cr:.2f} Crores/yr",
+        "estimated_annual_energy_savings_inr": f"₹{energy_savings_lakhs:.2f} Lakhs/yr"
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
