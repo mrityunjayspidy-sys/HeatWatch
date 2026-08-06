@@ -73,15 +73,43 @@ function updateDataSourceBadge(sourceStr) {
 }
 
 
+/* ─── Mobile Drawer Controls ─── */
+function openMobileDrawer() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobileDrawerOverlay');
+    if (sidebar) sidebar.classList.add('mobile-open');
+    if (overlay) overlay.classList.add('mobile-open');
+}
+
+function closeMobileDrawer() {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('mobileDrawerOverlay');
+    if (sidebar) sidebar.classList.remove('mobile-open');
+    if (overlay) overlay.classList.remove('mobile-open');
+}
+
+function toggleMobileDrawer() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar && sidebar.classList.contains('mobile-open')) {
+        closeMobileDrawer();
+    } else {
+        openMobileDrawer();
+    }
+}
+
 /* ─── Tab Switching ─── */
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-btn, .mobile-nav-btn').forEach(b => {
+        if (b.getAttribute('data-tab') === tabId) {
+            b.classList.add('active');
+        } else {
+            b.classList.remove('active');
+        }
+    });
+
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     
-    const btn = document.querySelector(`[data-tab="${tabId}"]`);
     const panel = document.getElementById(`panel-${tabId}`);
-    
-    if (btn) btn.classList.add('active');
     if (panel) panel.classList.add('active');
     
     lucide.createIcons();
@@ -95,6 +123,8 @@ function switchTab(tabId) {
             renderAllCharts();
         }, 80);
     }
+
+    closeMobileDrawer();
 }
 
 /* ─── Info Modal ─── */

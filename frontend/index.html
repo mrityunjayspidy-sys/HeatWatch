@@ -20,6 +20,9 @@
 <body>
     <div class="app-layout">
 
+        <!-- Mobile Drawer Overlay -->
+        <div class="mobile-drawer-overlay" id="mobileDrawerOverlay" onclick="closeMobileDrawer()"></div>
+
         <!-- ─── Left Sidebar Dashboard ─── -->
         <aside class="sidebar">
             <div class="sidebar-brand">
@@ -28,6 +31,9 @@
                     <h1 class="brand-title">HeatWatch AI</h1>
                     <p class="brand-sub">Urban Heat Intelligence</p>
                 </div>
+                <button class="mobile-drawer-close" id="btnMobileDrawerClose" onclick="closeMobileDrawer()" aria-label="Close menu">
+                    <i data-lucide="x"></i>
+                </button>
             </div>
 
             <!-- GEE Satellite Status Indicator -->
@@ -153,6 +159,20 @@
 
         <!-- ─── Main Content Area ─── -->
         <main class="main-content">
+
+            <!-- Mobile Top Header -->
+            <header class="mobile-header">
+                <button class="mobile-menu-btn" onclick="openMobileDrawer()" aria-label="Open menu">
+                    <i data-lucide="menu"></i>
+                </button>
+                <div class="mobile-brand-title">
+                    <div class="brand-icon-sm"><i data-lucide="thermometer"></i></div>
+                    <span>HeatWatch AI</span>
+                </div>
+                <button class="mobile-info-btn" onclick="toggleInfoModal()" aria-label="About Model">
+                    <i data-lucide="info"></i>
+                </button>
+            </header>
 
             <!-- Section 1: Heat Map -->
             <section class="tab-panel active" id="panel-heatmap">
@@ -388,6 +408,26 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Mobile Bottom Navigation Bar -->
+            <nav class="mobile-bottom-nav">
+                <button class="mobile-nav-btn active" data-tab="heatmap" onclick="switchTab('heatmap')">
+                    <i data-lucide="map"></i>
+                    <span>Heat Map</span>
+                </button>
+                <button class="mobile-nav-btn" data-tab="charts" onclick="switchTab('charts')">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Charts</span>
+                </button>
+                <button class="mobile-nav-btn" data-tab="scenarios" onclick="switchTab('scenarios')">
+                    <i data-lucide="flask-conical"></i>
+                    <span>Scenarios</span>
+                </button>
+                <button class="mobile-nav-btn" onclick="openMobileDrawer()">
+                    <i data-lucide="sliders"></i>
+                    <span>Controls</span>
+                </button>
+            </nav>
         </main>
     </div>
 

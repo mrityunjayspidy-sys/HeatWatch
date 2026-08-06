@@ -1307,3 +1307,487 @@ html, body {
 .legend-dot.forecast-cold {
     background: #c4b5fd;
 }
+
+/* ==========================================================================
+   Mobile UI/UX Adaptation
+   Web/Desktop UI/UX is 100% untouched and preserved.
+   ========================================================================== */
+
+/* ─── Mobile Base Utilities (Hidden on Desktop) ─── */
+.mobile-header,
+.mobile-bottom-nav,
+.mobile-drawer-overlay,
+.mobile-drawer-close {
+    display: none;
+}
+
+/* ─── Tablet / Medium Screen Optimization ─── */
+@media (max-width: 1024px) {
+    .charts-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .scenarios-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ─── Mobile UI/UX (< 768px) ─── */
+@media (max-width: 768px) {
+    html, body {
+        overflow: hidden;
+        height: 100dvh;
+        width: 100vw;
+    }
+
+    .app-layout {
+        flex-direction: column;
+        width: 100vw;
+        height: 100dvh;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Top Navigation Header for Mobile */
+    .mobile-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 52px;
+        min-height: 52px;
+        padding: 0 14px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border);
+        z-index: 1050;
+        flex-shrink: 0;
+    }
+
+    .mobile-menu-btn,
+    .mobile-info-btn {
+        background: transparent;
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        color: var(--text-primary);
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .mobile-menu-btn:active,
+    .mobile-info-btn:active {
+        background: var(--bg-hover);
+    }
+
+    .mobile-menu-btn svg,
+    .mobile-info-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .mobile-brand-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        font-size: 1rem;
+        letter-spacing: -0.01em;
+        color: #ffffff;
+    }
+
+    .brand-icon-sm {
+        width: 28px;
+        height: 28px;
+        border: 1.5px solid #fff;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .brand-icon-sm svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Off-Canvas Sidebar Drawer & Backdrop */
+    .mobile-drawer-overlay {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        z-index: 2999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .mobile-drawer-overlay.mobile-open {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 310px;
+        max-width: 86vw;
+        height: 100dvh;
+        z-index: 3000;
+        border-right: 1px solid var(--border-light);
+        box-shadow: 8px 0 32px rgba(0, 0, 0, 0.9);
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        padding-bottom: 30px;
+    }
+
+    .sidebar.mobile-open {
+        transform: translateX(0);
+    }
+
+    .sidebar-brand {
+        justify-content: space-between;
+    }
+
+    .mobile-drawer-close {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-light);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+
+    .mobile-drawer-close svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Bottom Navigation Bar for Mobile */
+    .mobile-bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: rgba(10, 10, 10, 0.96);
+        backdrop-filter: blur(16px);
+        border-top: 1px solid var(--border);
+        z-index: 2000;
+        justify-content: space-around;
+        align-items: center;
+        padding-bottom: env(safe-area-inset-bottom);
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.6);
+    }
+
+    .mobile-nav-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        height: 100%;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-family: var(--font);
+        font-size: 0.68rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: color 0.15s ease;
+        padding: 4px 0;
+    }
+
+    .mobile-nav-btn svg {
+        width: 20px;
+        height: 20px;
+        transition: transform 0.15s ease;
+    }
+
+    .mobile-nav-btn.active {
+        color: #ffffff;
+    }
+
+    .mobile-nav-btn.active svg {
+        transform: translateY(-1px);
+        stroke: #38bdf8;
+    }
+
+    /* Main Content Viewport Adjustment */
+    .main-content {
+        height: calc(100dvh - 52px - 60px);
+        flex: 1;
+        width: 100vw;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 60px;
+    }
+
+    .tab-panel {
+        height: 100%;
+        width: 100%;
+    }
+
+    .panel-header {
+        padding: 12px 14px;
+    }
+
+    .panel-header h2 {
+        font-size: 1.05rem;
+    }
+
+    .panel-header p {
+        font-size: 0.72rem;
+    }
+
+    /* Map View Switch Buttons Scroll Row */
+    .panel-header > div:last-child {
+        width: 100%;
+        margin-top: 6px;
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .btn-map-view {
+        flex: 1 0 auto;
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    /* Map Toolbar & Badges */
+    .map-toolbar {
+        padding: 8px 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .data-source-badge {
+        font-size: 0.72rem;
+        padding: 4px 8px;
+    }
+
+    .forecast-controls {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .fc-select, .fc-train-btn {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+    }
+
+    /* Map & Leaflet Mobile Styling */
+    .map-container {
+        height: calc(100% - 90px);
+        min-height: 350px;
+    }
+
+    .leaflet-map {
+        transform: perspective(1000px) rotateX(8deg) scale(1.01);
+        width: 105%;
+        height: 120%;
+        top: -10%;
+        left: -2.5%;
+    }
+
+    .leaflet-control-container .leaflet-top.leaflet-left {
+        top: 8px;
+        left: 8px;
+    }
+
+    .leaflet-control-zoom {
+        border-radius: 8px !important;
+        overflow: hidden;
+    }
+
+    .leaflet-control-zoom a {
+        width: 36px !important;
+        height: 36px !important;
+        line-height: 36px !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* Legend Positioning on Mobile */
+    .map-legend {
+        bottom: 82px;
+        right: 10px;
+        left: auto;
+        padding: 6px 10px;
+        border-radius: 8px;
+        max-width: 155px;
+        background: rgba(0, 0, 0, 0.88);
+    }
+
+    .legend-title {
+        font-size: 0.55rem;
+        margin-bottom: 4px;
+    }
+
+    .legend-items {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        font-size: 0.65rem;
+    }
+
+    .legend-dot {
+        width: 8px;
+        height: 8px;
+    }
+
+    /* Windy Timeline Bar on Mobile */
+    .windy-timeline-bar {
+        width: calc(100% - 20px);
+        bottom: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 8px 12px;
+        flex-direction: column;
+        gap: 8px;
+        border-radius: 12px;
+    }
+
+    .timeline-controls {
+        min-width: 0;
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .timeline-play-btn {
+        width: 34px;
+        height: 34px;
+    }
+
+    .timeline-play-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .timeline-date-tag {
+        font-size: 0.72rem;
+    }
+
+    .timeline-metrics-tag {
+        font-size: 0.68rem;
+    }
+
+    .timeline-slider-wrapper {
+        width: 100%;
+    }
+
+    .timeline-range {
+        height: 8px;
+    }
+
+    .timeline-range::-webkit-slider-thumb {
+        width: 22px;
+        height: 22px;
+    }
+
+    .timeline-labels {
+        font-size: 0.58rem;
+    }
+
+    .timeline-labels span:nth-child(2),
+    .timeline-labels span:nth-child(4) {
+        display: none;
+    }
+
+    /* Charts Panel on Mobile */
+    .charts-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 12px;
+    }
+
+    .chart-card {
+        padding: 12px;
+    }
+
+    .chart-card h3 {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+    }
+
+    .chart-wrapper {
+        height: 230px;
+        max-height: 230px;
+    }
+
+    /* Scenarios Panel on Mobile */
+    .scenarios-layout {
+        grid-template-columns: 1fr;
+        gap: 14px;
+        padding: 12px;
+    }
+
+    .scenario-controls,
+    .scenario-results {
+        padding: 14px;
+    }
+
+    .range-slider {
+        height: 8px;
+    }
+
+    .range-slider::-webkit-slider-thumb {
+        width: 22px;
+        height: 22px;
+    }
+
+    .result-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .result-card {
+        padding: 10px;
+    }
+
+    .result-label {
+        font-size: 0.65rem;
+    }
+
+    .result-value {
+        font-size: 1.05rem;
+    }
+
+    /* Modal on Mobile */
+    .modal-card {
+        width: 92%;
+        max-height: 85vh;
+        padding: 16px 14px;
+    }
+
+    .modal-card h2 {
+        font-size: 1.1rem;
+    }
+
+    .modal-body {
+        font-size: 0.78rem;
+    }
+
+    .info-table {
+        font-size: 0.72rem;
+    }
+}
