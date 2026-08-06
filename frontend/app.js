@@ -296,6 +296,10 @@ async function onCityChanged() {
     const city = citiesList[activeCityIdx];
     if (!city || !map3D) return;
 
+    if (isTimelinePlaying && typeof toggleTimelinePlay === "function") {
+        toggleTimelinePlay();
+    }
+
     updateCityStats(city);
     await updateActiveModelReadout(city);
     map3D.setView([city.latitude, city.longitude], 11);
@@ -1027,8 +1031,7 @@ function renderIndiaTemperatureMap() {
             activeCityIdx = idx;
             const select = document.getElementById("citySelect");
             if (select) select.value = idx;
-            updateCityStats(city);
-            updateActiveModelReadout(city);
+            onCityChanged();
         });
     });
 }
@@ -1038,23 +1041,39 @@ let isTimelinePlaying = false;
 let timelineTimer = null;
 let hourlyForecastFrames = [];
 
+function resetTimelineToCurrentHour() {
+    const slider = document.getElementById("timelineSlider");
+    const currentHour = new Date().getHours();
+    if (slider) {
+        const maxVal = parseInt(slider.max) || 47;
+        const initialVal = Math.min(currentHour, maxVal);
+        slider.value = initialVal;
+        onTimelineSliderInput(initialVal);
+    }
+}
+
 async function loadHourlyForecastGrid(cityName) {
     try {
         const folderName = cityName.toLowerCase().replace(/ /g, "_");
         const res = await fetch(`${API_BASE_URL}/api/city-grid-hourly/${folderName}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+            resetTimelineToCurrentHour();
+            return;
+        }
         const data = await res.json();
         hourlyForecastFrames = data.frames || [];
 
         const slider = document.getElementById("timelineSlider");
         if (slider && hourlyForecastFrames.length > 0) {
             slider.max = Math.max(0, hourlyForecastFrames.length - 1);
-            const initialVal = Math.min(14, hourlyForecastFrames.length - 1);
+            const currentHour = new Date().getHours();
+            const initialVal = Math.min(currentHour, hourlyForecastFrames.length - 1);
             slider.value = initialVal;
             onTimelineSliderInput(initialVal);
         }
     } catch (err) {
         console.warn("Hourly forecast load error:", err);
+        resetTimelineToCurrentHour();
     }
 }
 
