@@ -1505,21 +1505,21 @@ html, body {
     .mobile-bottom-nav {
         display: flex;
         position: fixed;
-        bottom: 12px;
+        bottom: 10px;
         left: 50%;
         transform: translateX(-50%);
-        width: min(330px, 88vw);
-        height: 50px;
-        background: rgba(12, 12, 12, 0.94);
+        width: min(320px, 86vw);
+        height: 46px;
+        background: rgba(12, 12, 12, 0.95);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.16);
-        border-radius: 25px;
+        border-radius: 23px;
         z-index: 2500;
         justify-content: space-around;
         align-items: center;
         padding: 0 4px;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.12);
         transition: all 0.25s ease;
     }
 
@@ -1685,17 +1685,19 @@ html, body {
         font-size: 1rem !important;
     }
 
-    /* Legend Positioning on Mobile */
+    /* Legend Floating Top-Right on Mobile */
     .map-legend {
-        bottom: 155px;
+        position: fixed;
+        top: 56px;
         right: 10px;
+        bottom: auto;
         left: auto;
         padding: 6px 10px;
         border-radius: 10px;
         max-width: 145px;
         background: rgba(0, 0, 0, 0.88);
         backdrop-filter: blur(10px);
-        z-index: 1800;
+        z-index: 1900;
     }
 
     .legend-title {
@@ -1715,21 +1717,22 @@ html, body {
         height: 8px;
     }
 
-    /* Windy Timeline Bar on Mobile (Positioned above Floating Pill Dock) */
+    /* Windy Timeline Bar Fixed Above Floating Pill Dock on Mobile */
     .windy-timeline-bar {
-        width: calc(100% - 20px);
-        max-width: 480px;
+        position: fixed;
         bottom: 74px;
         left: 50%;
         transform: translateX(-50%);
+        width: calc(100% - 24px);
+        max-width: 440px;
         padding: 8px 12px;
         flex-direction: column;
         gap: 6px;
         border-radius: 14px;
-        background: rgba(13, 17, 26, 0.94);
+        background: rgba(13, 17, 26, 0.95);
         backdrop-filter: blur(16px);
         z-index: 2000;
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7);
     }
 
     .timeline-controls {
