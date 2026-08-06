@@ -258,26 +258,38 @@
                     <p id="chartsPanelSub">Vegetation, water, built-up indices and temperature distribution for the selected city.</p>
                 </div>
                 <div class="charts-grid">
-                    <div class="chart-card">
-                        <h3 id="titleLandCover">Land Cover Breakdown</h3>
+                    <div class="chart-card mobile-collapsible" onclick="toggleChartCard(this)">
+                        <div class="chart-card-header">
+                            <h3 id="titleLandCover">Land Cover Breakdown</h3>
+                            <span class="chart-toggle-icon"><i data-lucide="chevron-down"></i></span>
+                        </div>
                         <div class="chart-wrapper">
                             <canvas id="chartLandCover"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
-                        <h3 id="titleCityTemps">City vs Benchmark Temperatures</h3>
+                    <div class="chart-card mobile-collapsible collapsed" onclick="toggleChartCard(this)">
+                        <div class="chart-card-header">
+                            <h3 id="titleCityTemps">City vs Benchmark Temperatures</h3>
+                            <span class="chart-toggle-icon"><i data-lucide="chevron-down"></i></span>
+                        </div>
                         <div class="chart-wrapper">
                             <canvas id="chartCityTemps"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
-                        <h3 id="titleIndices">Spectral &amp; Microclimate Profile</h3>
+                    <div class="chart-card mobile-collapsible collapsed" onclick="toggleChartCard(this)">
+                        <div class="chart-card-header">
+                            <h3 id="titleIndices">Spectral &amp; Microclimate Profile</h3>
+                            <span class="chart-toggle-icon"><i data-lucide="chevron-down"></i></span>
+                        </div>
                         <div class="chart-wrapper">
                             <canvas id="chartIndices"></canvas>
                         </div>
                     </div>
-                    <div class="chart-card">
-                        <h3 id="titleTiers">Grid Temperature Tier Distribution</h3>
+                    <div class="chart-card mobile-collapsible collapsed" onclick="toggleChartCard(this)">
+                        <div class="chart-card-header">
+                            <h3 id="titleTiers">Grid Temperature Tier Distribution</h3>
+                            <span class="chart-toggle-icon"><i data-lucide="chevron-down"></i></span>
+                        </div>
                         <div class="chart-wrapper">
                             <canvas id="chartTiers"></canvas>
                         </div>

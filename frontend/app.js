@@ -79,6 +79,7 @@ function openMobileDrawer() {
     const overlay = document.getElementById('mobileDrawerOverlay');
     if (sidebar) sidebar.classList.add('mobile-open');
     if (overlay) overlay.classList.add('mobile-open');
+    document.body.classList.add('drawer-open');
 }
 
 function closeMobileDrawer() {
@@ -86,6 +87,7 @@ function closeMobileDrawer() {
     const overlay = document.getElementById('mobileDrawerOverlay');
     if (sidebar) sidebar.classList.remove('mobile-open');
     if (overlay) overlay.classList.remove('mobile-open');
+    document.body.classList.remove('drawer-open');
 }
 
 function toggleMobileDrawer() {
@@ -95,6 +97,18 @@ function toggleMobileDrawer() {
     } else {
         openMobileDrawer();
     }
+}
+
+/* ─── Mobile Chart Card Accordion Toggle ─── */
+function toggleChartCard(cardEl) {
+    if (window.innerWidth > 768) return; // Desktop remains fully expanded
+    cardEl.classList.toggle('collapsed');
+    lucide.createIcons();
+    setTimeout(() => {
+        if (typeof renderAllCharts === 'function') {
+            renderAllCharts();
+        }
+    }, 100);
 }
 
 /* ─── Tab Switching ─── */
