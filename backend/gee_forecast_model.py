@@ -56,6 +56,11 @@ class TemperatureForecastModel:
         """Load pre-trained forecast model if available."""
         if os.path.exists(FORECAST_MODEL_PATH):
             try:
+                try:
+                    import sklearn._loss._loss
+                    sys.modules['_loss'] = sklearn._loss._loss
+                except Exception:
+                    pass
                 payload = joblib.load(FORECAST_MODEL_PATH)
                 self.model_7d = payload.get("model_7d")
                 self.model_30d = payload.get("model_30d")

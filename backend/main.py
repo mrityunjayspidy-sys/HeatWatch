@@ -3,9 +3,10 @@ import sys
 import glob
 import pandas as pd
 import numpy as np
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -34,7 +35,7 @@ from gee_live_fetcher import satellite_engine
 from gee_forecast_model import forecast_model
 
 
-DATA_DIR = r"D:\MINI PROJECT_NEW\data\processed"
+DATA_DIR = os.path.join(ROOT_DIR, "data", "processed")
 
 app = FastAPI(
     title="HeatWatch AI - Urban Heat Mitigation Platform",
@@ -50,9 +51,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+FRONTEND_DIR = os.path.join(ROOT_DIR, "frontend")
 if os.path.exists(FRONTEND_DIR):
-    app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend_app")
+    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend_static")
 
 class PredictRequest(BaseModel):
     latitude: float = Field(..., example=19.0758)
@@ -116,7 +118,12 @@ class OpenMeteoTrainRequest(BaseModel):
 
 
 @app.get("/")
-def read_root():
+def read_root(request: Request):
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept and not request.query_params.get("format") == "json":
+        index_file = os.path.join(FRONTEND_DIR, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
     return {
         "status": "online",
         "app_name": "HeatWatch AI",
@@ -124,6 +131,20 @@ def read_root():
         "total_cities": len((engine.model_data or {}).get('city_stats', {})),
         "version": "4.6.0"
     }
+
+@app.get("/styles.css")
+def get_root_styles():
+    f = os.path.join(FRONTEND_DIR, "styles.css")
+    if os.path.exists(f):
+        return FileResponse(f, media_type="text/css")
+    raise HTTPException(status_code=404, detail="File not found")
+
+@app.get("/app.js")
+def get_root_app_js():
+    f = os.path.join(FRONTEND_DIR, "app.js")
+    if os.path.exists(f):
+        return FileResponse(f, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="File not found")
 
 @app.get("/api/health")
 def get_health():
@@ -712,4 +733,5 @@ def simulate_indian_budget_mitigation(req: IndianBudgetRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("backend.main:app", host="127.0.0.1", port=8000, reload=True)
+    app_target = "main:app" if os.path.abspath(os.getcwd()) == BACKEND_DIR else "backend.main:app"
+    uvicorn.run(app_target, host="127.0.0.1", port=8000, reload=True)

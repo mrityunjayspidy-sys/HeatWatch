@@ -106,4 +106,4 @@ if __name__ == "__main__":
     test_predict()
     test_simulate()
     test_ga_optimize()
-    print("\n✅ ALL TESTS PASSED — Zero mock data, all real from D:\\MINI PROJECT_NEW\\data")
+    print("\n✅ ALL TESTS PASSED — Zero mock data, all real from data/ directory")

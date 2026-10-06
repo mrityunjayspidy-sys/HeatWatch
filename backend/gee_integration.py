@@ -23,7 +23,8 @@ NASA_ASTER_GED = "NASA/ASTER_GED/AG100_003"
 MODIS_DAILY_LST = "MODIS/061/MOD11A1"
 SENTINEL2_SURFACE_REFLECTANCE = "COPERNICUS/S2_SR_HARMONIZED"
 
-DATA_DIR = r"D:\MINI PROJECT_NEW\data\processed"
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(ROOT_DIR, "data", "processed")
 
 
 class GEEGeospatialProvider:

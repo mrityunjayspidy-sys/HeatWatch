@@ -298,8 +298,13 @@ class UHIWeatherModel:
         joblib.dump(payload, filepath)
 
     def load_model(self, filepath: str = "uhi_intensity_model.pkl"):
-        if os.path.exists(filepath):
-            payload = joblib.load(filepath)
+        target_path = filepath
+        if not os.path.exists(target_path):
+            fallback_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filepath)
+            if os.path.exists(fallback_path):
+                target_path = fallback_path
+        if os.path.exists(target_path):
+            payload = joblib.load(target_path)
             self.rf_model = payload.get("rf_model", payload.get("model"))
             self.gb_model = payload.get("gb_model")
             self.metrics = payload.get("metrics", {})

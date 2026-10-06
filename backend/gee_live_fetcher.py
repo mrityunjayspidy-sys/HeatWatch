@@ -38,8 +38,8 @@ MODIS_NIGHT_LST = "MODIS/061/MYD11A1"
 SENTINEL2_SR = "COPERNICUS/S2_SR_HARMONIZED"
 ASTER_GED = "NASA/ASTER_GED/AG100_003"
 SRTM_ELEVATION = "USGS/SRTM90_V4"
-
-DATA_DIR = r"D:\MINI PROJECT_NEW\data\processed"
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(ROOT_DIR, "data", "processed")
 
 # ─── In-Memory Cache ───
 _grid_cache = {}  # key: city_name -> {"timestamp": float, "data": list}

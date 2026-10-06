@@ -14,8 +14,8 @@ class HeatMitigationEngine:
         if os.path.exists(MODEL_PATH):
             try:
                 self.model_data = joblib.load(MODEL_PATH)
-                print(f"Loaded trained ML model from {MODEL_PATH}")
-                print(f"Dataset Source: {self.model_data.get('dataset_source', 'D:\\MINI PROJECT_NEW\\data')}")
+                root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                print(f"Dataset Source: {self.model_data.get('dataset_source', os.path.join(root_dir, 'data'))}")
                 print(f"R² Score: {self.model_data.get('metrics', {}).get('r2', 0):.4f}")
                 return
             except Exception as e:
