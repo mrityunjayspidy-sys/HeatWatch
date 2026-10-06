@@ -1189,9 +1189,29 @@ async function onIndianBudgetSliderChange(val) {
 /* ─── Map ─── */
 function init3DMap() {
     map3D = L.map("map3D", { center: [20.5937, 78.9629], zoom: 5, zoomControl: false });
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution: "&copy; OSM &copy; CARTO", maxZoom: 18
-    }).addTo(map3D);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const cartoKey = urlParams.get('carto_key') || localStorage.getItem('carto_key');
+
+    if (cartoKey) {
+        L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoKey)}`, {
+            attribution: "&copy; OSM &copy; CARTO",
+            maxZoom: 18
+        }).addTo(map3D);
+    } else {
+        // High-performance Dark Gray Canvas (100% free, zero API key required on Vercel/production)
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
+            attribution: "&copy; Esri, DeLorme, NAVTEQ",
+            maxZoom: 16
+        }).addTo(map3D);
+
+        // Reference labels layer (crisp white/gray city labels & borders)
+        L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {
+            attribution: "",
+            maxZoom: 16
+        }).addTo(map3D);
+    }
+
     heatGridGroup = L.layerGroup().addTo(map3D);
     omVectorGroup = L.layerGroup().addTo(map3D);
 }
